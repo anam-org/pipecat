@@ -16,11 +16,13 @@ from typing import Optional
 
 from anam import (
     AgentAudioInputConfig,
+    AgentAudioInputStream,
     AnamClient,
     AnamEvent,
     ClientOptions,
     ConnectionClosedCode,
     PersonaConfig,
+    Session,
 )
 from av.audio.resampler import AudioResampler
 from loguru import logger
@@ -91,14 +93,15 @@ class AnamVideoService(AIService):
         self._api_version = api_version
 
         self._client: Optional[AnamClient] = None
-        self._anam_session = None
-        self._agent_audio_stream = None
+        self._anam_session: Optional[Session] | None = None
+        self._agent_audio_stream: Optional[AgentAudioInputStream] | None = None
         self._send_task: Optional[asyncio.Task] = None
         self._video_task: Optional[asyncio.Task] = None
         self._audio_task: Optional[asyncio.Task] = None
         self._anam_resampler = AudioResampler("s16", "mono", 48000)
         self._transport_ready = False
         self._session_ready_event = asyncio.Event()
+        self._queue = asyncio.Queue()
 
     async def setup(self, setup: FrameProcessorSetup):
         """Set up the Anam video service with necessary configuration.
@@ -147,14 +150,20 @@ class AnamVideoService(AIService):
         self._session_ready_event.clear()
 
         try:
+            # Block until session_ready so the backend can receive TTS
             self._anam_session = await self._client.connect_async()
-        except Exception as e:
-            logger.error(f"Error connecting to Anam: {e}")
-            await self.push_error(ErrorFrame(error=f"Anam connection error: {e}"))
+            await asyncio.wait_for(self._session_ready_event.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            error_msg = "Anam session connection timed out."
+            logger.error(error_msg)
+            await self._close_session()
+            await self.push_error_frame(ErrorFrame(error=error_msg))
             raise
-
-        # Block until sessionready so the backend is ready to receive TTS
-        await self._session_ready_event.wait()
+        except Exception as e:
+            error_msg = f"Error connecting to Anam: {e}"
+            logger.error(error_msg)
+            await self.push_error_frame(ErrorFrame(error=error_msg))
+            raise
 
         # Allow the pipeline to continue start up
         await super().start(frame)
@@ -170,8 +179,9 @@ class AnamVideoService(AIService):
                 audio_config
             )
         except Exception as e:
-            logger.error(f"Error creating agent audio stream: {e}")
-            await self.push_error(ErrorFrame(error=f"Anam agent audio stream error: {e}"))
+            error_msg = f"Anam agent audio stream error: {e}"
+            logger.error(error_msg)
+            await self.push_error_frame(ErrorFrame(error=error_msg))
             raise
 
         # Create tasks for consuming video and audio frames
@@ -271,8 +281,9 @@ class AnamVideoService(AIService):
 
                 await self.push_frame(frame)
         except Exception as e:
-            logger.error(f"Error consuming video frames: {e}")
-            await self.push_error(ErrorFrame(error=f"Anam video frame error: {e}"))
+            error_msg = f"Anam error consuming video frames: {e}"
+            logger.error(error_msg)
+            await self.push_error_frame(ErrorFrame(error=error_msg))
 
     async def _consume_audio_frames(self) -> None:
         """Consume audio frames from Anam iterator and push them downstream.
@@ -298,8 +309,9 @@ class AnamVideoService(AIService):
                     await self.push_frame(frame)
 
         except Exception as e:
-            logger.error(f"Error consuming audio frames: {e}")
-            await self.push_error(ErrorFrame(error=f"Anam audio frame error: {e}"))
+            error_msg = f"Anam error consuming audio frames: {e}"
+            logger.error(error_msg)
+            await self.push_error_frame(ErrorFrame(error=error_msg))
 
     async def _cancel_video_task(self):
         """Cancel the video frame consumption task if it exists."""
@@ -336,7 +348,7 @@ class AnamVideoService(AIService):
                 error_message += f" - {reason}"
             logger.error(f"{error_message}")
             await self._cleanup()
-            await self.push_error(ErrorFrame(error=error_message))
+            await self.push_error_frame(ErrorFrame(error=error_message))
 
     async def _handle_interruption(self) -> None:
         """Handle interruption events by resetting send tasks and notifying client.
@@ -402,6 +414,7 @@ class AnamVideoService(AIService):
                 if self._agent_audio_stream:
                     await self._agent_audio_stream.end_sequence()
             except Exception as e:
-                logger.error(f"Error in audio send task: {e}")
-                await self.push_error(ErrorFrame(error=f"Anam audio send error: {e}"))
+                error_msg = f"Anam audio send error: {e}"
+                logger.error(error_msg)
+                await self.push_error_frame(ErrorFrame(error=error_msg))
                 break

@@ -23,6 +23,7 @@ from anam import (
     ConnectionClosedCode,
     PersonaConfig,
     Session,
+    SessionOptions,
 )
 from av.audio.resampler import AudioResampler
 from loguru import logger
@@ -73,6 +74,7 @@ class AnamVideoService(AIService):
         ice_servers: Optional[list[dict]] = None,
         api_base_url: Optional[str] = None,
         api_version: Optional[str] = None,
+        enable_session_replay: bool = True,
         **kwargs,
     ) -> None:
         """Initialize the Anam video service.
@@ -83,6 +85,7 @@ class AnamVideoService(AIService):
             ice_servers: Custom ICE servers for WebRTC (optional).
             api_base_url: Base URL for the Anam API.
             api_version: API version to use.
+            enable_session_replay: Whether to enable session recording on Anam's backend.
             **kwargs: Additional arguments passed to parent AIService.
         """
         super().__init__(**kwargs)
@@ -91,6 +94,7 @@ class AnamVideoService(AIService):
         self._ice_servers = ice_servers
         self._api_base_url = api_base_url
         self._api_version = api_version
+        self._enable_session_replay = enable_session_replay
 
         self._client: Optional[AnamClient] = None
         self._anam_session: Optional[Session] | None = None
@@ -151,7 +155,7 @@ class AnamVideoService(AIService):
 
         try:
             # Block until session_ready so the backend can receive TTS
-            self._anam_session = await self._client.connect_async()
+            self._anam_session = await self._client.connect_async(session_options=SessionOptions(enable_session_replay=self._enable_session_replay))
             await asyncio.wait_for(self._session_ready_event.wait(), timeout=30)
         except asyncio.TimeoutError:
             error_msg = "Anam session connection timed out."

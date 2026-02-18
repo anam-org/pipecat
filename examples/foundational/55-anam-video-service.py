@@ -38,7 +38,6 @@ load_dotenv(override=True)
 
 REQUIRED_ENV_VARS = [
     "ANAM_API_KEY",
-    "ANAM_AVATAR_ID",
     "DEEPGRAM_API_KEY",
     "CARTESIA_API_KEY",
     "GOOGLE_API_KEY",
@@ -85,7 +84,10 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     llm = GoogleLLMService(api_key=os.getenv("GOOGLE_API_KEY"))
 
-    avatar_id = os.getenv("ANAM_AVATAR_ID", "").strip().strip('"')
+    # Your Anam API key. This is used to create a single-use session token for each session directly.
+    api_key = os.getenv("ANAM_API_KEY")
+
+    avatar_id = os.getenv("ANAM_AVATAR_ID", "071b0286-4cce-4808-bee2-e642f1062de3").strip().strip('"')
 
     # Create ephemeral persona config with only avatar_id set and audio passthrough enabled.
     # This disables Anam's orchestration layer and feeds the TTS directly to the avatar generation.
@@ -95,11 +97,17 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     )
     logger.info(f"Persona config: {persona_config}")
 
+    # Session recordings are enabled by default (only avatar audio and video is recorded).
+    # Disabling session recordings to use Anam as a face-only provider.
+    enable_session_replay = False
+
+    # Create the Anam video service.
     anam = AnamVideoService(
-        api_key=os.getenv("ANAM_API_KEY"),
+        api_key=api_key,
         persona_config=persona_config,
         api_base_url="https://api.anam.ai",
         api_version="v1",
+        enable_session_replay=enable_session_replay,
     )
 
     messages = [

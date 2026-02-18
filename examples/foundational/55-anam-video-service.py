@@ -38,7 +38,6 @@ load_dotenv(override=True)
 
 REQUIRED_ENV_VARS = [
     "ANAM_API_KEY",
-    "ANAM_AVATAR_ID",
     "DEEPGRAM_API_KEY",
     "CARTESIA_API_KEY",
     "GOOGLE_API_KEY",

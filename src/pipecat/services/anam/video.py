@@ -161,12 +161,13 @@ class AnamVideoService(AIService):
             error_msg = "Anam session connection timed out."
             logger.error(error_msg)
             await self._close_session()
-            await self.push_error_frame(ErrorFrame(error=error_msg))
+            await self.push_error_frame(ErrorFrame(error=error_msg, fatal=True))
             raise
         except Exception as e:
             error_msg = f"Error connecting to Anam: {e}"
             logger.error(error_msg)
-            await self.push_error_frame(ErrorFrame(error=error_msg))
+            await self._close_session()
+            await self.push_error_frame(ErrorFrame(error=error_msg, fatal=True))
             raise
 
         # Allow the pipeline to continue start up
@@ -185,7 +186,8 @@ class AnamVideoService(AIService):
         except Exception as e:
             error_msg = f"Anam agent audio stream error: {e}"
             logger.error(error_msg)
-            await self.push_error_frame(ErrorFrame(error=error_msg))
+            await self._close_session()
+            await self.push_error_frame(ErrorFrame(error=error_msg, fatal=True))
             raise
 
         # Create tasks for consuming video and audio frames

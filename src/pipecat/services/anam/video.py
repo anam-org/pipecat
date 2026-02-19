@@ -157,14 +157,12 @@ class AnamVideoService(AIService):
             # Block until session_ready so the backend can receive TTS
             self._anam_session = await self._client.connect_async(session_options=SessionOptions(enable_session_replay=self._enable_session_replay))
             await asyncio.wait_for(self._session_ready_event.wait(), timeout=30)
-        except asyncio.TimeoutError:
-            error_msg = "Anam session connection timed out."
-            logger.error(error_msg)
-            await self._close_session()
-            await self.push_error_frame(ErrorFrame(error=error_msg, fatal=True))
-            raise
         except Exception as e:
-            error_msg = f"Error connecting to Anam: {e}"
+            error_msg = (
+                "Anam session connection timed out."
+                if isinstance(e, asyncio.TimeoutError)
+                else f"Error connecting to Anam: {e}"
+            )
             logger.error(error_msg)
             await self._close_session()
             await self.push_error_frame(ErrorFrame(error=error_msg, fatal=True))

@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: BSD 2-Clause License
 #
 
-import logging
 import os
 
 from anam import PersonaConfig
@@ -79,7 +78,8 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
     tts = CartesiaTTSService(
-        api_key=os.getenv("CARTESIA_API_KEY"), voice_id="00967b2f-88a6-4a31-8153-110a92134b9f"
+        api_key=os.getenv("CARTESIA_API_KEY"),
+        voice_id="e8e5fffb-252c-436d-b842-8879b84445b6",
     )
 
     llm = GoogleLLMService(api_key=os.getenv("GOOGLE_API_KEY"))

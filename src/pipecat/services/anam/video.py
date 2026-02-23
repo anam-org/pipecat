@@ -252,8 +252,6 @@ class AnamVideoService(AIService):
             await self._handle_interruption()
         if isinstance(frame, OutputTransportReadyFrame):
             self._transport_ready = True
-        # if isinstance(frame, TTSStartedFrame):
-        #     await self.start_ttfb_metrics()
         if isinstance(frame, BotStartedSpeakingFrame):
             await self.stop_ttfb_metrics()
 

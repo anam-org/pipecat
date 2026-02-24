@@ -87,7 +87,9 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     # Your Anam API key. This is used to create a single-use session token for each session directly.
     api_key = os.getenv("ANAM_API_KEY")
 
-    avatar_id = os.getenv("ANAM_AVATAR_ID", "071b0286-4cce-4808-bee2-e642f1062de3").strip().strip('"')
+    avatar_id = (
+        os.getenv("ANAM_AVATAR_ID", "071b0286-4cce-4808-bee2-e642f1062de3").strip().strip('"')
+    )
 
     # Create ephemeral persona config with only avatar_id set and audio passthrough enabled.
     # This disables Anam's orchestration layer and feeds the TTS directly to the avatar generation.

@@ -156,7 +156,9 @@ class AnamVideoService(AIService):
 
         try:
             # Block until session_ready so the backend can receive TTS
-            self._anam_session = await self._client.connect_async(session_options=SessionOptions(enable_session_replay=self._enable_session_replay))
+            self._anam_session = await self._client.connect_async(
+                session_options=SessionOptions(enable_session_replay=self._enable_session_replay)
+            )
             await asyncio.wait_for(self._session_ready_event.wait(), timeout=30)
         except Exception as e:
             error_msg = (
@@ -233,7 +235,7 @@ class AnamVideoService(AIService):
 
         - TTSAudioRawFrame: Processes audio for avatar speech (not pushed downstream)
         - InterruptionFrame: Handles interruptions
-        - OutputTransportReadyFrame: Sets transport ready flag 
+        - OutputTransportReadyFrame: Sets transport ready flag
         - BotStartedSpeakingFrame: Stops TTFB metrics
         - Other frames: Forwards them through the pipeline
 
@@ -367,7 +369,7 @@ class AnamVideoService(AIService):
         await self._cancel_send_task()
         if self._agent_audio_stream:
             await self._agent_audio_stream.end_sequence()
-        await self._create_send_task() 
+        await self._create_send_task()
         self._received_first_audio_frame = False
 
     async def _close_session(self):
@@ -413,8 +415,8 @@ class AnamVideoService(AIService):
                 if isinstance(frame, TTSAudioRawFrame) and frame.audio:
                     await self._agent_audio_stream.send_audio_chunk(frame.audio)
                     if not self._received_first_audio_frame:
-                        await self.start_ttfb_metrics() # Start TTFB metrics on first audio frame
-                        self._received_first_audio_frame = True                        
+                        await self.start_ttfb_metrics()  # Start TTFB metrics on first audio frame
+                        self._received_first_audio_frame = True
 
             except asyncio.TimeoutError:
                 if self._agent_audio_stream:
